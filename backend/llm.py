@@ -1,10 +1,13 @@
-import requests
+from openai import OpenAI
 import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
 
 def analyze_with_llm(resume_text: str, jd_text: str, matched_skills: list) -> dict:
     prompt = f"""
@@ -29,23 +32,14 @@ ALREADY MATCHED SKILLS:
 {', '.join(matched_skills)}
 """
 
-    response = requests.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        json={
-            "model": "google/gemini-2.5-flash",
-            "messages": [{"role": "user", "content": prompt}]
-        }
+    response = client.chat.completions.create(
+        model="openrouter/free",
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=1000
     )
 
-    data = response.json()
-    raw = data["choices"][0]["message"]["content"]
-
-    # Strip markdown if model wraps in backticks
-    raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    raw = response.choices[0].message.content.strip()
+    raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
 
     import json
     try:
